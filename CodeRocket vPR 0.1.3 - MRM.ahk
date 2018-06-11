@@ -24,15 +24,14 @@
 
 */
 /*  TO-DO List
+Remove dependence on Client Preferences table
+Change MarginFlags to just alertFlags
 Move Patient Data into the WebView
 Add DoNotUse Hotstring functionality could check on F8 also
 Add CPT Checking support
 Clean up Shift Enter to properly use Regex and the named Code
 Add A-Z replacements for all data
 Add ProcedureNote Flag 
-
-
-
 */
 
 Startup:         ;MS done
@@ -1179,11 +1178,27 @@ F8::           ;Automation
 		CloseWinSURGEModalWindow("WinSURGE - Final","","&Close")
 	}
 
+	x := WinSURGEOpenCasePhoto1()
+	y := WinSURGEOpenCasePhoto2()
+
+;Check for photos if there is a no-photo flag
+IfInstring, marginFlags, no-photos
+	{
+		if(x or y)
+			{
+			Msgbox, 4, Photo Present Warning!, Client has requested to never have photos and you have one in this case. Do you want to continue with photos?	
+			IfMsgBox No
+				{
+				SaveError = 1	
+				Return
+				}
+			}
+	}
+
+
 ;Photo presence checking block
-	if (UsePhotos)
+IfInstring, marginFlags, use-photos
 		{
-			x := WinSURGEOpenCasePhoto1()
-			y := WinSURGEOpenCasePhoto2()
 			if (!x AND !y)
 				{
 				SoundBeep
