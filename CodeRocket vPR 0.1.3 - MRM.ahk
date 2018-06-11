@@ -284,7 +284,6 @@ BuildMainGui:  ;Paper Replacer
 		PatientName := Result_8
 		StringSplit, j, Result_9, .
 		PatientAge := j1
-		preferences := Result_10
 		rawPreferences := Result_10
 		ClientOfficeName := Result_11
 		ClientID := Result_12
@@ -304,10 +303,6 @@ BuildMainGui:  ;Paper Replacer
 		
 		StringSplit, PhysicianWinSurgeId, ClientWinSurgeId, .  ;physican WinSurge Id is stored in PhysicianWinSurgeId1
 		
-		StringReplace, preferences, preferences,`r,,All
-		StringReplace, preferences, preferences,¥,,All
-		StringReplace, preferences, preferences,***,<br>, All
-
 		StringReplace, ClientOfficeName, ClientOfficeName, &, &&, All
 		StringReplace, ClientOfficeName, ClientOfficeName, -Att, ,
 		
@@ -356,7 +351,6 @@ BuildMainGui:  ;Paper Replacer
 		grossdescriptiontext := RegExReplace(grossdescriptiontext,"\([A-Z][A-Z]\/[a-z]+ \d+\/\d+\/\d+ \d+:\d+ \w+\)","")
 		grossdescriptiontext := RegExReplace(grossdescriptiontext,"\([a-z]+ \d+\/\d+\/\d+ \d+:\d+ \w+\)","")
 
-		displayedPreferences := preferences
 		displayedClinicalData := ClinicalData
 		displayedFinalDiagnosis := finaldiagnosistext
 		displayedGrossDescription := grossdescriptiontext
@@ -376,12 +370,17 @@ BuildMainGui:  ;Paper Replacer
 		StringReplace, orderedProcedures, orderedProcedures, m1mar,Mart-1,All
 
 			
-		ReDrawGui()
+		ReDrawGui() ;Uses rawPreferences
 		
 		;This section looks for "client" specific preferences and adds them to the preferences box if they exist
 		additionalPreferences := ""
 		s=select p.proficiencylog from physician p where p.number='%ClientID%'
 		WinSurgeQuery(s)
+		
+		StringReplace, msg, msg, `n,<br>,All
+		StringReplace, msg, msg, ***,<br>, All
+		StringReplace, msg, msg, ¥,,All
+		StringReplace, msg, msg, `r,,All
 
 		If msg
 			{
@@ -389,26 +388,20 @@ BuildMainGui:  ;Paper Replacer
 				FoundPos1 := InStr(msg, rawPreferences)
 			else
 				FoundPos1 := 0
+			
 			if(msg<>"")
 				FoundPos2 := InStr(rawPreferences, msg)
 			else
 				FoundPos2 := 0
 
-			StringReplace, msg, msg, `n,<br>,All
-			StringReplace, msg, msg, ***,<br>, All
-			StringReplace, msg, msg, ¥,,All
-			StringReplace, msg, msg, `r,,All
-
 			if(!(FoundPos1 OR FoundPos2))
 				{
 				rawPreferences=%rawPreferences%%msg%
-				displayedPreferences=%displayedPreferences%<br>%msg%
 				RedrawGui()
 				}
 			else if(FoundPos1>0 AND FoundPos2=0)
 				{
 				rawPreferences=%msg%
-				displayedPreferences=%msg%
 				RedrawGui()
 				}
 			}
@@ -2220,7 +2213,7 @@ Shift & Enter::
 						{
 							SoundBeep
 							SoundBeep
-							Msgbox,4,Margin Warning!!!,This client has requested the following margin preferences (%UseMargins%) and you have used one!  Do you wish to continue?
+							Msgbox,4,Margin Warning!!!,This client has requested the following margin preferences (%marginFlags%) and you have used one!  Do you wish to continue?
 							IfMsgbox, No
 								Return	
 						}
@@ -3599,8 +3592,14 @@ ReDrawGui()  ;Paper replacer
 		GuiControl, Show, UseMargins
 		GuiControl, Show, WB
 		Menu, EditMenu, Enable, Edit Client Preferences
-		
-		;SMART Replacements start here
+
+
+		StringReplace, displayedPreferences, rawPreferences, `n,<br>,All
+		StringReplace, displayedPreferences, displayedPreferences,`r,,All
+		StringReplace, displayedPreferences, displayedPreferences,¥,,All
+		StringReplace, displayedPreferences, displayedPreferences,***,<br>, All
+
+	;SMART Replacements start here
 		if UseSmartSubstitutions
 		{
 			marginFlags := ""
@@ -3614,8 +3613,10 @@ ReDrawGui()  ;Paper replacer
 				
 				if (Instr(displayedPreferences, m) AND !Instr(displayedPreferences, n))
 					{
+						;Msgbox, 3617 - %displayedPreferences%`n%m%`n%n%`n%o%
 						StringReplace, displayedPreferences, displayedPreferences, %m%, %n%, All
-						marginFlags=%marginFlags%, %o%
+						if (o)
+							marginFlags=%marginFlags%, %o%
 					}
 					
 				StringReplace, displayedClinicalData, displayedClinicalData, %m%, %n%, All
@@ -3660,7 +3661,8 @@ ReDrawGui()  ;Paper replacer
 		WB.document.getElementById("grossDescription").innerHTML := displayedGrossDescription
 		WB.document.getElementById("priorCaseInformation").innerHTML := priorCaseInfo
 	}
-	
+
+;Msgbox, 3665 - %marginFlags%
 return
 }
 
