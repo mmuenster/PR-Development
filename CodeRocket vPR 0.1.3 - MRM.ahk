@@ -24,7 +24,7 @@
 
 */
 /*  TO-DO List
-Remove dependence on Client Preferences table
+Check margins in Clinical overrides other flags.
 Change MarginFlags to just alertFlags
 Move Patient Data into the WebView
 Add DoNotUse Hotstring functionality could check on F8 also
@@ -145,10 +145,8 @@ If !DisableDermCoding
 		}
 
 		
-	Menu, EditMenu, Add, Edit Client Preferences, EditDoctorPreferences
 
 	Menu, MyMenuBar, Add, &File, :FileMenu  
-	Menu, MyMenuBar, Add, &Edit, :EditMenu
 	Menu, MyMenuBar, Add, &Settings, :SettingsMenu
 	Menu, MyMenuBar, Add, &Help, :HelpMenu
 	Gui, Menu, MyMenuBar
@@ -372,15 +370,9 @@ BuildMainGui:  ;Paper Replacer
 		ReDrawGui() ;Uses rawPreferences
 		
 		;This section looks for "client" specific preferences and adds them to the preferences box if they exist
-		additionalPreferences := ""
 		s=select p.proficiencylog from physician p where p.number='%ClientID%'
 		WinSurgeQuery(s)
 		
-		StringReplace, msg, msg, `n,<br>,All
-		StringReplace, msg, msg, ***,<br>, All
-		StringReplace, msg, msg, ¥,,All
-		StringReplace, msg, msg, `r,,All
-
 		If msg
 			{
 			If(rawPreferences<>"")
@@ -395,7 +387,7 @@ BuildMainGui:  ;Paper Replacer
 
 			if(!(FoundPos1 OR FoundPos2))
 				{
-				rawPreferences=%rawPreferences%%msg%
+				rawPreferences=%rawPreferences%`n%msg%
 				RedrawGui()
 				}
 			else if(FoundPos1>0 AND FoundPos2=0)
@@ -546,13 +538,7 @@ BuildMainGui:  ;Paper Replacer
 			
 if (!DisableDermCoding)
 {
-			s = Select top 1 c.name,c.photo_pref,c.micro_pref,c.margin_pref, c.icd9_pref, c.log from clinipref c where c.WinSurge_id=%ClientWinSurgeId%
-			CodeDatabaseQuery(s)
-			If Result_1  ;If a database entry was found
-				{
-					ClinicianFound = 1
-					CurrentLog := Result_6
-					if Result_2  ;Photos Selected\
+					IfInString, marginFlags, use-photos
 						{
 						GuiControl, 1:Show, UsePhotos
 						UsePhotos := 1
@@ -563,7 +549,7 @@ if (!DisableDermCoding)
 						UsePhotos := 0
 					}
 
-					If Result_3
+					IfInString, marginFlags, use-micros
 						{
 						GuiControl, 1:Show, UseMicros	
 						UseMicros := 1
@@ -573,46 +559,6 @@ if (!DisableDermCoding)
 						GuiControl, 1:Hide, UseMicros
 						UseMicros := 0
 					}
-
-					If Result_4
-						{
-						GuiControl, Text, UseMargins ,% Result_4
-						UseMargins := Result_4
-						}
-					Else	
-					{
-						GuiControl, Text, UseMargins ,
-						UseMargins := ""
-					}
-
-					If Result_5
-						{
-						;GuiControl, 1:Show, UseICD9s	
-						;UseICD9s := 1
-						}
-					Else	
-					{
-						;GuiControl, 1:Hide, UseICD9s
-						;UseICD9s := 0
-					}
-					
-				}
-			Else    ;Else doctor was not found in the clinipref database
-				{
-					ClinicianFound = 0
-					Gui, 1:Hide
-					Gui, 1:+Disabled
-					Gosub, EditDoctorPreferences
-					GuiControl, 2:, PhotoSelect, 0
-					GuiControl, 2:, MicroSelect, 0
-					;GuiControl, 2:, ICD9Select, 0
-					GuiControl, 2:Text, DocPreferenceLabel, Enter preferences for %ClientName%
-					Gui, 2:Show, , CarisDemo			;x%CarisRocketWindowX% y%CarisRocketWindowY% w%CarisRocketWindowW% h%CarisRocketWindowH%
-					Gui, 2:-Disabled +AlwaysOnTop
-					SoundBeep
-					SoundBeep
-				}
-
 	}
 return
 }
@@ -806,68 +752,6 @@ DermHotkeysOn:
 return
 }
 	
-EditDoctorPreferences:		;Automation
-{
-	
-	Gui, 2:Destroy
-	Gui, 2:Font, S12, Verdana
-	Gui, 2:Add, Text, x18 vDocPreferenceLabel, TestNameXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-	Gui, 2:Font, S8, Verdana
-	Gui, 2:Add, Checkbox, vPhotoSelect, Photos Required
-	Gui, 2:Add, Checkbox, vMicroSelect, Micros Required
-	;Gui, 2:Add, Checkbox, vICD9Select, ICD9s Required
-	Gui, 2:Add, Text, , Margin Preferences
-	Gui, 2:Add, Edit, vMarginSelect w500, 
-	Gui, 2:Add, Button, gSavePreferences vGo, Save Preferences
-
-	GuiControl, 2:, PhotoSelect, %UsePhotos%
-	GuiControl, 2:, MicroSelect, %UseMicros%
-	;GuiControl, 2:, ICD9Select, %UseICD9s%	
-	GuiControl, 2:, MarginSelect, %UseMargins%
-	GuiControl, 2:Text, PhotoSelect, Photos Required
-	GuiControl, 2:Text, MicroSelect, Micros Required
-	;GuiControl, 2:Text, ICD9Select, ICD9s Required
-	SetTimer, WinSURGECaseDataUpdater, Off
-	Gui, 1:Hide
-	Gui, 1:+Disabled
-	GuiControl, 2:Text, DocPreferenceLabel, Enter preferences for %ClientName%
-	;Gosub, GlobalPreferenceSelect
-	Gui, 2:Show  
-	Gui, 2:-Disabled
-	Sleep, 500
-	WinActivate, Caris CodeRocket
-		return
-}
-	
-SavePreferences:   			;Automation
-{
-	
-		Gui, 2:Submit
-			
-		StringReplace, y, WinSurgeFullName,','', All
-		StringReplace, z, ClientName,','',All
-
-		If ClinicianFound
-			s =	Update CliniPref SET Photo_pref='%PhotoSelect%', Micro_pref ='%MicroSelect%', Icd9_pref='0', Margin_pref='%MarginSelect%', log='%CurrentLog%;%y% %A_mm%-%A_DD%-%A_YYYY%' WHERE Winsurge_id = %ClientWinSurgeId%
-		Else
-			s =	Insert into CliniPref (Winsurge_id,Name,Photo_pref,Micro_pref,Margin_pref,Icd9_pref,log) VALUES (%ClientWinSurgeId%,'%z%','%PhotoSelect%', '%MicroSelect%', '%MarginSelect%', '0', '%y% %A_mm%-%A_DD%-%A_YYYY%')
-
-		CodeDatabaseQuery(s) 
-
-		lastWinSURGEtitle = 
-		Gui, 2:Hide
-		Gui, 2:+Disabled
-		Gui, 1:-Disabled
-		Gosub, WinSURGECaseDataUpdater
-		Gui, 1:Show
-		WinActivate, WinSURGE - 
-		WinActivate, Caris CodeRocket
-		lastWinSURGEtitle=
-		SetTimer, WinSURGECaseDataUpdater, 2000
-
-Return
-}
-
 UnblockInput:			;Automation
 {
 	BlockInput, Off
@@ -3563,7 +3447,6 @@ ReDrawGui()  ;Paper replacer
 		GuiControl, Hide, UseMicros
 		GuiControl, Hide, UseMargins
 		GuiControl, Hide, WB
-		Menu, EditMenu, Disable, Edit Client Preferences
 		displayedPreferences := ""
 		displayedClinicalData := ""
 		displayedFinalDiagnosis := ""
@@ -3585,7 +3468,6 @@ ReDrawGui()  ;Paper replacer
 		GuiControl, Hide, UseMicros
 		GuiControl, Hide, UseMargins
 		GuiControl, Hide, WB
-		Menu, EditMenu, Disable, Edit Client Preferences
 		displayedPreferences := ""
 		displayedClinicalData := ""
 		displayedFinalDiagnosis := ""
@@ -3595,7 +3477,6 @@ ReDrawGui()  ;Paper replacer
 	{
 		GuiControl, Enable, CaseScanBox 
 		GuiControl, , CaseNumberLabel, %CurrentCaseNumber%
-		;GuiControl, Enable, OK
 		GuiControl, Show, PatientLabel
 		GuiControl, , PatientLabel, Patient: %PatientName% (%PatientAge%) - DOB: %PatientDOB%
 		GuiControl, Show, DoctorLabel
@@ -3606,8 +3487,6 @@ ReDrawGui()  ;Paper replacer
 		GuiControl, Show, UseMicros
 		GuiControl, Show, UseMargins
 		GuiControl, Show, WB
-		Menu, EditMenu, Enable, Edit Client Preferences
-
 
 		StringReplace, displayedPreferences, rawPreferences, `n,<br>,All
 		StringReplace, displayedPreferences, displayedPreferences,`r,,All
@@ -3624,7 +3503,6 @@ ReDrawGui()  ;Paper replacer
 				m := smartSubs[A_Index].searchText
 				n := smartSubs[A_Index].replacementText
 				o := smartSubs[A_Index].flag
-				
 				
 				if (Instr(displayedPreferences, m) AND !Instr(displayedPreferences, n))
 					{
