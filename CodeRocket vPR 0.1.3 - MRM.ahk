@@ -12,12 +12,13 @@ Move Smart Substitution Editing to a webpage for html formatting
 
 */
 /*  TO-DO List
-Add alert-on-use alert Flag for Diagnosis Codes in the preferences
+Add edit functionality to currently engaged smart substitutions.
+DD18-142163 no line breaks in preferences
+Fix parsing of the clinical history in Shift-Enter
+
 Move Patient Data into the WebView
 Add DoNotUse Hotstring functionality could check on F8 also
 Add CPT Checking support
-Clean up Shift Enter to properly use Regex and the named Code
-Add A-Z replacements for all data
 Add ProcedureNote Flag 
 */
 
@@ -80,7 +81,7 @@ If !DisableDermCoding
 	Gui, Add, Text, r1 w500 vDoctorLabel, Doctor: %ClientName%
 	Gui, Add, Text, r1 w500 vClientLabel, Client:  %ClientOfficeName%  --- %ClientState%
 	gui, add, text, x10 y+10 w800 h1 0x7  ;Horizontal Line > Black
-	html=<span id='main'><span id='orderedProcedures'></span><span id='attnPathologist' style='color:red'></span><strong>Preferences:</strong><br><span id='preferences'></span><br><br><strong>Clinical Information:<br></strong><span id='clinicalInformation' style="color:blue"></span><br><br><strong>Final Diagnosis:<br></strong><span id='finalDiagnosis' style="color:green"></span><br><br><strong>Gross Description:<br></strong><span id='grossDescription'></span><br><br><strong>Prior Case Information<br></strong><span id='priorCaseInformation'></span></span>
+	html=<span id='main' style='white-space:pre-line'><span id='orderedProcedures'></span><span id='attnPathologist' style='color:red'></span><strong>Preferences:</strong><br><span id='preferences'></span><br><br><strong>Clinical Information:<br></strong><span id='clinicalInformation' style="color:blue"></span><br><br><strong>Final Diagnosis:<br></strong><span id='finalDiagnosis' style="color:green"></span><br><br><strong>Gross Description:<br></strong><span id='grossDescription'></span><br><br><strong>Prior Case Information<br></strong><span id='priorCaseInformation'></span></span>
 
 	Gui, Add, ActiveX, w800 h590 vWB hwndATLWinHWND, Shell.Explorer
 	ComObjConnect(WB, new Event)
@@ -1207,6 +1208,12 @@ return
 	StringReplace, clipboard, clipboard,`n,,All
 	StringReplace, clipboard, clipboard,`r,,All
 	
+	IfNotInString, displayedPreferences, %clipboard%
+	{
+		Msgbox, There is a problem with the text "%clipboard%" that prevents it becoming a smart substitution
+		return
+	}
+
 	
 	InputBox, alertCodes, Add A Diagnosis Code Alert..., What diagnosis codes (separated by hyphens) would you like %clipboard% to alert you on?
 	
@@ -1228,6 +1235,11 @@ return
 	StringReplace, clipboard, clipboard,`n,,All
 	StringReplace, clipboard, clipboard,`r,,All
 	
+	IfNotInString, displayedPreferences, %clipboard%
+	{
+		Msgbox, There is a problem with the text "%clipboard%" that prevents it becoming a smart substitution
+		return
+	}
 	
 	InputBox, reText, Add A Smart Substitution..., What would you like to replace "%clipboard%" with?
 	
@@ -3495,6 +3507,8 @@ ReDrawGui()  ;Paper replacer
 		GuiControl, Show, UseMargins
 		GuiControl, Show, WB
 
+	;Msgbox, 3508 - %rawPreferences%
+	
 		StringReplace, displayedPreferences, rawPreferences, `n,<br>,All
 		StringReplace, displayedPreferences, displayedPreferences,`r,,All
 		StringReplace, displayedPreferences, displayedPreferences,¥,,All
@@ -3505,22 +3519,25 @@ ReDrawGui()  ;Paper replacer
 		{
 			alertFlags := ""
 
-			Loop, % smartSubs.Length()+1
+			Loop, 2  ;This is required to get the links to work that are below the first substitution
 			{
-				m := smartSubs[A_Index].searchText
-				n := smartSubs[A_Index].replacementText
-				o := smartSubs[A_Index].flag
-				
-				if (Instr(displayedPreferences, m) AND !Instr(displayedPreferences, n))
-					{
-						;Msgbox, 3617 - %displayedPreferences%`n%m%`n%n%`n%o%
-						StringReplace, displayedPreferences, displayedPreferences, %m%, %n%, All
-						if (o)
-							alertFlags=%alertFlags%, %o%
-					}
+				Loop, % smartSubs.Length()+1
+				{
+					m := smartSubs[A_Index].searchText
+					n := smartSubs[A_Index].replacementText
+					o := smartSubs[A_Index].flag
 					
-				StringReplace, displayedClinicalData, displayedClinicalData, %m%, %n%, All
-				StringReplace, displayedGrossDescription, displayedGrossDescription, %m%, %n%, All
+					if (Instr(displayedPreferences, m) AND !Instr(displayedPreferences, n))
+						{
+							;Msgbox, 3617 - %displayedPreferences%`n%m%`n%n%`n%o%
+							StringReplace, displayedPreferences, displayedPreferences, %m%, %n%, All
+							if (o)
+								alertFlags=%alertFlags%, %o%
+						}
+						
+					StringReplace, displayedClinicalData, displayedClinicalData, %m%, %n%, All
+					StringReplace, displayedGrossDescription, displayedGrossDescription, %m%, %n%, All
+				}
 			}
 		}
 
