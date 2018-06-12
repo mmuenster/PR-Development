@@ -1,31 +1,18 @@
 /*  WISH LIST    
 /*  Preference Checking: 
  * Move Current functionality to Firebase
- * Use an external web page to enter preferences into a Firebase database.
- * Store the preferences that were used to generate the database entries and monitor if they have changed.
- * 
- * Create a master list of hashtags to tag DX Codes with
- * #normal #abnormal #tumor #malignant  #benign #NMSC #BCC #SCC #Melanoma #allDN #mildDN, #atypicalMelanocyticProliferation #inflammatory #rash #hematolymphoid
- * 
  * Allow granularity on the edit page, hashtags Y/N Any DX code added specifically
  * Allow the same granularity for recomendations
  * 
  * Do not use list: #hashtage, DXCODES, helperphrases, "literal phrases"
- * 
- * Micros  Same granularity as margins
- * Photos:  Same granularity as margins
- 
-	Explore separating the Coding, Automation, and Paper Replacer Functions
-	Pull MsgToResults() into a function?
 
-	Move Smart Substitution Editing to a webpage for html formatting
+Move Smart Substitution Editing to a webpage for html formatting
  
  */
 
 */
 /*  TO-DO List
-Check margins in Clinical overrides other flags.
-Change MarginFlags to just alertFlags
+Add alert-on-use alert Flag for Diagnosis Codes in the preferences
 Move Patient Data into the WebView
 Add DoNotUse Hotstring functionality could check on F8 also
 Add CPT Checking support
@@ -352,7 +339,7 @@ BuildMainGui:  ;Paper Replacer
 		displayedFinalDiagnosis := finaldiagnosistext
 		displayedGrossDescription := grossdescriptiontext
 		
-		displayedClinicalData := RegExReplace(displayedClinicalData, "(([P|p]lease)?\s?(?i)(check margins\W?))", "<strong style='color:Red'>$0</strong>")
+		displayedClinicalData := RegExReplace(displayedClinicalData, "(([P|p]lease)?\s?(?i)((check)?\s?margins\W?))", "<strong style='color:Red'>$0</strong>")
 		
 		orderedProcedures := RegExReplace(orderedProcedures,"L 1-3#\d+,","")
 		orderedProcedures := RegExReplace(orderedProcedures,"L 1-3#\d+","")
@@ -538,7 +525,7 @@ BuildMainGui:  ;Paper Replacer
 			
 if (!DisableDermCoding)
 {
-					IfInString, marginFlags, use-photos
+					IfInString, alertFlags, use-photos
 						{
 						GuiControl, 1:Show, UsePhotos
 						UsePhotos := 1
@@ -549,7 +536,7 @@ if (!DisableDermCoding)
 						UsePhotos := 0
 					}
 
-					IfInString, marginFlags, use-micros
+					IfInString, alertFlags, use-micros
 						{
 						GuiControl, 1:Show, UseMicros	
 						UseMicros := 1
@@ -1066,7 +1053,7 @@ F8::           ;Automation
 	y := WinSURGEOpenCasePhoto2()
 
 ;Check for photos if there is a no-photo flag
-IfInstring, marginFlags, no-photos
+IfInstring, alertFlags, no-photos
 	{
 		if(x or y)
 			{
@@ -1081,7 +1068,7 @@ IfInstring, marginFlags, no-photos
 
 
 ;Photo presence checking block
-IfInstring, marginFlags, use-photos
+IfInstring, alertFlags, use-photos
 		{
 			if (!x AND !y)
 				{
@@ -1212,6 +1199,27 @@ return
 	Gui, 11:Show, , Add a Smart Flag...
 	return
 
+}
+
+^!a::			;Paper Replacer
+{	
+	Send, ^c
+	StringReplace, clipboard, clipboard,`n,,All
+	StringReplace, clipboard, clipboard,`r,,All
+	
+	
+	InputBox, alertCodes, Add A Diagnosis Code Alert..., What diagnosis codes (separated by hyphens) would you like %clipboard% to alert you on?
+	
+	If ErrorLevel
+		return
+
+	reText=<span style='background-color:orange'>%clipboard%</span>
+
+	FileAppend, "%clipboard%"`,"%reText%"`,"alert-on-use-%alertCodes%-"`n, %A_MyDocuments%\MySmartSubstitutions.csv
+	LoadSmartSubstitutions()
+	CurrentCodeRocketDisplayedCase := 0
+	Gosub, BuildMainGui
+	return
 }
 
 ^!m::			;Paper Replacer
@@ -1602,24 +1610,13 @@ checkForMelanoma:
 
 	return
 }
-
-^!8::
-{
-		x := get_filled_case_number(CurrentCodeRocketDisplayedCase)
-		s=select s.number, s.computed_numblocks, s.computed_xnumblocks, s.computed_nslides, s.computed_xnslides from specimen s where computed_numberfilled='%x%'
-		WinSurgeQuery(s)
-		Msgbox, %msg%
-				return
-}
 			
 ^!x::	;Automation
 {
 
 
-x := get_filled_case_number(CurrentCodeRocketDisplayedCase)
-s=select number, numberofspecimenparts, num05 from specimen where computed_numberfilled ='%x%'
-WinSurgeQuery(s)
-Msgbox, %msg%
+	Msgbox, %alertFlags%
+				return
 return
 
 
@@ -1943,7 +1940,7 @@ return
 	Return
 }
 
-^!2::Msgbox, %marginFlags%
+^!2::Msgbox, %alertFlags%
 	
 #h::  ; Win+H hotkey used to add hotstrings to the personal extended phrases 
 {
@@ -2024,6 +2021,16 @@ Shift & Enter::
 		commentHelpers := rawCode7
 		modifiers := rawCode8
 		
+		tempVar=-%dxCode%-
+		If(InStr(alertFlags, "alert-on-use-") AND Instr(alertFlags, tempVar))
+		{
+						SoundBeep 
+						SoundBeep
+						Msgbox, 4, Possible Preference Code Violation!!!, The client has requested a unique preference for this code.  Do you want to continue with this code?
+						IfMsgbox, No
+							Return
+		}
+				
 		If (dxCode="" OR StrLen(marginHelper)>1)
 		{			
 		Msgbox, There is an error in your diagnosis code!  Please reenter!
@@ -2092,7 +2099,7 @@ Shift & Enter::
 				{
 									
 					tempVar := Instr(thisJarClinicalData1, "margin") AND !InStr(SelDiagnosis, "No Residual")
-					tempVar += Instr(marginFlags, "margins-all-nevi") AND (Instr(SelDiagnosis, "nevus") OR Instr(SelDiagnosis, "melanocy"))  ;For All nevi
+					tempVar += Instr(alertFlags, "margins-all-nevi") AND (Instr(SelDiagnosis, "nevus") OR Instr(SelDiagnosis, "melanocy"))  ;For All nevi
 					if (tempVar)
 					{
 						SoundBeep 
@@ -2105,14 +2112,14 @@ Shift & Enter::
  				}
 				else if i=1
 					{
-					
-					tempVar := Instr(marginFlags, "none")  ;Warn if they have requested no margins
-					tempVar += Instr(marginFlags, "no-margins-nmsc") AND (Instr(SelDiagnosis, "carcinoma") OR Instr(SelDiagnosis,"actinic keratosis")) ;warn if they have requested no margins on NMSC
-					if (tempVar)
+				
+					tempVar := Instr(alertFlags, "none")  ;Warn if they have requested no margins
+					tempVar += Instr(alertFlags, "no-margins-nmsc") AND (Instr(SelDiagnosis, "carcinoma") OR Instr(SelDiagnosis,"actinic keratosis")) ;warn if they have requested no margins on NMSC
+					if (tempVar AND !Instr(thisJarClinicalData1, "margin"))
 						{
 							SoundBeep
 							SoundBeep
-							Msgbox,4,Margin Warning!!!,This client has requested the following margin preferences (%marginFlags%) and you have used one!  Do you wish to continue?
+							Msgbox,4,Margin Warning!!!,This client has requested the following margin preferences (%alertFlags%) and you have used one!  Do you wish to continue?
 							IfMsgbox, No
 								Return	
 						}
@@ -3496,7 +3503,7 @@ ReDrawGui()  ;Paper replacer
 	;SMART Replacements start here
 		if UseSmartSubstitutions
 		{
-			marginFlags := ""
+			alertFlags := ""
 
 			Loop, % smartSubs.Length()+1
 			{
@@ -3509,7 +3516,7 @@ ReDrawGui()  ;Paper replacer
 						;Msgbox, 3617 - %displayedPreferences%`n%m%`n%n%`n%o%
 						StringReplace, displayedPreferences, displayedPreferences, %m%, %n%, All
 						if (o)
-							marginFlags=%marginFlags%, %o%
+							alertFlags=%alertFlags%, %o%
 					}
 					
 				StringReplace, displayedClinicalData, displayedClinicalData, %m%, %n%, All
@@ -3555,7 +3562,7 @@ ReDrawGui()  ;Paper replacer
 		WB.document.getElementById("priorCaseInformation").innerHTML := priorCaseInfo
 	}
 
-;Msgbox, 3665 - %marginFlags%
+;Msgbox, 3665 - %alertFlags%
 return
 }
 
