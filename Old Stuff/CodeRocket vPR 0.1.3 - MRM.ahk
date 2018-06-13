@@ -357,35 +357,34 @@ BuildMainGui:  ;Paper Replacer
 			
 		ReDrawGui() ;Uses rawPreferences
 		
-/* 		;This section looks for "client" specific preferences and adds them to the preferences box if they exist
- * 		s=select p.proficiencylog from physician p where p.number='%ClientID%'
- * 		WinSurgeQuery(s)
- * 		Msgbox, %msg%
- * 		If msg
- * 			{
- * 			If(rawPreferences<>"")
- * 				FoundPos1 := InStr(msg, rawPreferences)
- * 			else
- * 				FoundPos1 := 0
- * 			
- * 			if(msg<>"")
- * 				FoundPos2 := InStr(rawPreferences, msg)
- * 			else
- * 				FoundPos2 := 0
- * 
- * 			if(!(FoundPos1 OR FoundPos2))
- * 				{
- * 				rawPreferences=%rawPreferences%`n%msg%
- * 				RedrawGui()
- * 				}
- * 			else if(FoundPos1>0 AND FoundPos2=0)
- * 				{
- * 				rawPreferences=%msg%
- * 				RedrawGui()
- * 				}
- * 			}
- * 	
- */
+		;This section looks for "client" specific preferences and adds them to the preferences box if they exist
+		s=select p.proficiencylog from physician p where p.number='%ClientID%'
+		WinSurgeQuery(s)
+		
+		If msg
+			{
+			If(rawPreferences<>"")
+				FoundPos1 := InStr(msg, rawPreferences)
+			else
+				FoundPos1 := 0
+			
+			if(msg<>"")
+				FoundPos2 := InStr(rawPreferences, msg)
+			else
+				FoundPos2 := 0
+
+			if(!(FoundPos1 OR FoundPos2))
+				{
+				rawPreferences=%rawPreferences%`n%msg%
+				RedrawGui()
+				}
+			else if(FoundPos1>0 AND FoundPos2=0)
+				{
+				rawPreferences=%msg%
+				RedrawGui()
+				}
+			}
+	
 
 
 
@@ -1626,21 +1625,9 @@ checkForMelanoma:
 			
 ^!x::	;Automation
 {
-;Loop, Read, C:\Users\mmuenster\Desktop\Business Projects\client comments\clientList.csv
-;{
-
-	;StringSplit, a, A_LoopReadLine, `,%A_Space%
-		s=select client.proficiencylog from physician p where p.number='MD5935D'
-		WinSurgeQuery(s)
-		;Msgbox, %s%
-		If (Result_2)
-			Msgbox, %Result_2%
 
 
-SourceCode := WB.document.documentElement.outerHTML
-
-	Msgbox, %SourceCode%
-	Msgbox, %alertFlags%`n%rawPreferences%
+	Msgbox, %alertFlags%
 				return
 return
 
@@ -3544,8 +3531,8 @@ ReDrawGui()  ;Paper replacer
 						{
 							;Msgbox, 3617 - %displayedPreferences%`n%m%`n%n%`n%o%
 							StringReplace, displayedPreferences, displayedPreferences, %m%, %n%, All
-							if (o AND !InStr(alertFlags, o))
-								alertFlags=%alertFlags%   %o%
+							if (o)
+								alertFlags=%alertFlags%, %o%
 						}
 						
 					StringReplace, displayedClinicalData, displayedClinicalData, %m%, %n%, All

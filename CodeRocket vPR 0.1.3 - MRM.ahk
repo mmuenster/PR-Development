@@ -3531,8 +3531,8 @@ ReDrawGui()  ;Paper replacer
 						{
 							;Msgbox, 3617 - %displayedPreferences%`n%m%`n%n%`n%o%
 							StringReplace, displayedPreferences, displayedPreferences, %m%, %n%, All
-							if (o)
-								alertFlags=%alertFlags%, %o%
+							if (o AND !InStr(alertFlags, o))
+								alertFlags=%alertFlags% %o%
 						}
 						
 					StringReplace, displayedClinicalData, displayedClinicalData, %m%, %n%, All
