@@ -254,7 +254,7 @@ BuildMainGui:  ;Paper Replacer
 
 	x := get_filled_case_number(CurrentCodeRocketDisplayedCase)
 		
-		s := "select s.dx, s.gross, s.numberofspecimenparts, s.custom03, s.clin, p.name, s.clindata, pt.name, s.Computed_PATIENTAGE, p.proficiencylog, p.comment, s.custom04, s.patient, s.zfield, s.Computed_PatientDOB, s.computed_procabs from specimen s, physician p, patient pt where s.patient = pt.id and s.clin=p.id and computed_numberfilled='" . x . "'"
+		s := "select s.dx, s.gross, s.numberofspecimenparts, s.custom03, s.clin, p.name, s.clindata, pt.name, s.Computed_PATIENTAGE, p.proficiencylog, p.comment, s.custom04, s.patient, s.zfield, s.Computed_PatientDOB, s.computed_procabs, z.proficiencylog from specimen s, physician p, physician z, patient pt where s.patient = pt.id and s.clin=p.id and s.client=z.id and computed_numberfilled='" . x . "'"
 
 		WinSurgeQuery(s)
 
@@ -277,7 +277,9 @@ BuildMainGui:  ;Paper Replacer
 		attnPathologistField := Result_14
 		PatientDOB := Result_15
 		orderedProcedures := Result_16
+		clientPreferences := Result_17
 		
+		rawPreferences=%rawPreferences%`n%clientPreferences%
 		
 		;Mandatory Replacements for basic formatting start here
 		attnPathologistField := RegExReplace(attnPathologistField, "[a-z]+ \d+\/\d+\/\d+ \d+:\d+ \w+", "")
@@ -357,36 +359,36 @@ BuildMainGui:  ;Paper Replacer
 			
 		ReDrawGui() ;Uses rawPreferences
 		
-/* 		;This section looks for "client" specific preferences and adds them to the preferences box if they exist
- * 		s=select p.proficiencylog from physician p where p.number='%ClientID%'
- * 		WinSurgeQuery(s)
- * 		Msgbox, %msg%
- * 		If msg
- * 			{
- * 			If(rawPreferences<>"")
- * 				FoundPos1 := InStr(msg, rawPreferences)
- * 			else
- * 				FoundPos1 := 0
- * 			
- * 			if(msg<>"")
- * 				FoundPos2 := InStr(rawPreferences, msg)
- * 			else
- * 				FoundPos2 := 0
- * 
- * 			if(!(FoundPos1 OR FoundPos2))
- * 				{
- * 				rawPreferences=%rawPreferences%`n%msg%
- * 				RedrawGui()
- * 				}
- * 			else if(FoundPos1>0 AND FoundPos2=0)
- * 				{
- * 				rawPreferences=%msg%
- * 				RedrawGui()
- * 				}
- * 			}
- * 	
+/*  		;This section looks for "client" specific preferences and adds them to the preferences box if they exist
+		;s := "select p.proficiencylog from specimen s, physician p, patient pt where s.patient = pt.id and s.client=p.id and computed_numberfilled='" . x . "'"
+	WinSurgeQuery(s)
+	;Msgbox, %msg%
+	If msg
+		{ 	
+		If(rawPreferences<>"")
+ 				FoundPos1 := InStr(msg, rawPreferences)
+ 			else
+ 				FoundPos1 := 0
+ 			
+ 			if(msg<>"")
+ 				FoundPos2 := InStr(rawPreferences, msg)
+ 			else
+ 				FoundPos2 := 0
+ 
+ 			if(!(FoundPos1 OR FoundPos2))
+ 				{
+ 				rawPreferences=%rawPreferences%`n%msg%
+ 				RedrawGui()
+ 				}
+ 			else if(FoundPos1>0 AND FoundPos2=0)
+ 				{
+ 				rawPreferences=%msg%
+ 				RedrawGui()
+ 				}
+ 			}
+ 	
+ 
  */
-
 
 
 
@@ -1630,11 +1632,16 @@ checkForMelanoma:
 ;{
 
 	;StringSplit, a, A_LoopReadLine, `,%A_Space%
-		s=select client.proficiencylog from physician p where p.number='MD5935D'
+		;s=select client.proficiencylog from physician p where p.number='MD5935D'
+		s=select p.proficiencylog from specimen s, physician p, patient pt where s.patient = pt.id and s.clin=p.id and computed_numberfilled='DD18-143271'
+		s=select comments from physician_comments pc, specimen s where pc.physician_id=s.client and computed_numberfilled='DD18-143700'
+		s := "select s.number, s.computed_nspecimenparts, s.computed_tcatname, s.custom04, s.computed_pathname, s.resultkeylog from specimen s where s.sodate='2018-06-13' and s.custom04 LIKE 'AZ%' and s.computed_tcatname<>'Skin' and s.computed_tcatname<>'Gastrointestinal'"
+		;s=select * from specimen s where computed_numberfilled='DD18-143700'
+		s=select p.proficiencylog from specimen s, physician p, patient pt where s.patient = pt.id and s.client=p.id and computed_numberfilled='DD18-143700'
 		WinSurgeQuery(s)
 		;Msgbox, %s%
-		If (Result_2)
-			Msgbox, %Result_2%
+		If (msg)
+			Msgbox, %msg%
 
 
 SourceCode := WB.document.documentElement.outerHTML
