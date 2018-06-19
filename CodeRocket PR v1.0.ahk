@@ -15,11 +15,14 @@ Move Smart Substitution Editing to a webpage for html formatting
 Add edit functionality to currently engaged smart substitutions.
 DD18-142163 no line breaks in preferences
 Fix parsing of the clinical history in Shift-Enter
+Add ProcedureNote Flag   (requires adding functionality to setup)
+Add Add Clinical Info Flag	
+Move all functions to the menu
 
-Move Patient Data into the WebView
+Move All Data into the WebView
 Add DoNotUse Hotstring functionality could check on F8 also
 Add CPT Checking support
-Add ProcedureNote Flag 
+
 */
 
 Startup:         ;MS done
@@ -97,6 +100,15 @@ If !DisableDermCoding
 	WB.document.write(html)
 	
 	Menu, FileMenu, Add, E&xit, GuiClose
+	
+	Menu, FunctionsMenu, Add, Signout queued cases (ctl-alt-s), ^!s
+	Menu, FunctionsMenu, Add, Get total signed out (ctrl-alt-c), ^!c
+	Menu, FunctionsMenu, Add, Print paper for this case (ctrl-alt-p), ^!p
+	Menu, FunctionsMenu, Add, Send email about this case (ctrl-alt-e), ^!e
+	Menu, FunctionsMenu, Add, Make new hotstring from highlighted text (Win-h), #h
+	Menu, FunctionsMenu, Add, Today's AutoAssign summary (ctrl-alt-w), ^!w
+	
+	
 	Menu, HelpMenu, Add, Search Diagnosis Codes  (F7), F7
 	Menu, HelpMenu, Add, Search Extended Phrases  (Shift-F7), +F7
 	Menu, HelpMenu, Add, Display All Helpers  (F9), F9
@@ -137,6 +149,7 @@ If !DisableDermCoding
 	Menu, MyMenuBar, Add, &File, :FileMenu  
 	Menu, MyMenuBar, Add, &Settings, :SettingsMenu
 	Menu, MyMenuBar, Add, &Help, :HelpMenu
+	Menu, MyMenuBar, Add, Fu&nctions, :FunctionsMenu
 	Gui, Menu, MyMenuBar
 
 	Gui, 1:+Resize +MinSize850x850 +MaxSize850x850
@@ -1628,32 +1641,7 @@ checkForMelanoma:
 			
 ^!x::	;Automation
 {
-;Loop, Read, C:\Users\mmuenster\Desktop\Business Projects\client comments\clientList.csv
-;{
 
-	;StringSplit, a, A_LoopReadLine, `,%A_Space%
-		;s=select client.proficiencylog from physician p where p.number='MD5935D'
-		s=select p.proficiencylog from specimen s, physician p, patient pt where s.patient = pt.id and s.clin=p.id and computed_numberfilled='DD18-143271'
-		s=select comments from physician_comments pc, specimen s where pc.physician_id=s.client and computed_numberfilled='DD18-143700'
-		s := "select s.number, s.computed_nspecimenparts, s.computed_tcatname, s.custom04, s.computed_pathname, s.resultkeylog from specimen s where s.sodate='2018-06-13' and s.custom04 LIKE 'AZ%' and s.computed_tcatname<>'Skin' and s.computed_tcatname<>'Gastrointestinal'"
-		;s=select * from specimen s where computed_numberfilled='DD18-143700'
-		s=select p.proficiencylog from specimen s, physician p, patient pt where s.patient = pt.id and s.client=p.id and computed_numberfilled='DD18-143700'
-		WinSurgeQuery(s)
-		;Msgbox, %s%
-		If (msg)
-			Msgbox, %msg%
-
-
-SourceCode := WB.document.documentElement.outerHTML
-
-	Msgbox, %SourceCode%
-	Msgbox, %alertFlags%`n%rawPreferences%
-				return
-return
-
-
-
-	return	
 }
 
 ^!k::
@@ -1838,13 +1826,36 @@ return
 
 ^!w::
 {
-	InputBox, caseNum, Enter the case number...
-		x := get_filled_case_number(caseNum)
+URLDownloadToFile, http://s-irv-autoasgn/autoassign2/report_path_case_status.php, distHtml.txt
 
-	s := "select s.number, s.numberofspecimenparts, s.calculatedslidecount from specimen s where computed_numberfilled='" . x . "'"
-	WinSurgeQuery(s)
-	Msgbox, %msg%
-	return
+FileRead, html, distHTML.txt
+FileDelete, distHTML.txt
+
+
+document := ComObjCreate("HTMLfile")
+document.write(html)
+all := document.getElementsByTagName("table")
+
+Sleep, 1000
+tempVar := 2
+table := all[tempVar]
+
+notDistributedCount := 0
+
+Loop, % table.rows.length - 1
+{	
+	tempVar := A_Index-1
+	if (table.rows[tempVar].cells[1].innerHTML>0 AND table.rows[tempVar].cells[2].innerHTML<>"&nbsp;")
+		distributedCount += table.rows[tempVar].cells[1].innerHTML
+	else
+		notDistributedCount += table.rows[tempVar].cells[1].innerHTML
+	
+}
+
+	totalJarsInQueue := distributedCount + notDistributedCount
+	Msgbox, Distribution Summary`n-------------------------`n %distributedCount% of %totalJarsInQueue% distributed
+	Return
+
 }
 
 ^!y::   ;Hotkey to find out who signs out what % of a client's cases
