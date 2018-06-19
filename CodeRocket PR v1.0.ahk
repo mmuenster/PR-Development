@@ -12,12 +12,11 @@ Move Smart Substitution Editing to a webpage for html formatting
 
 */
 /*  TO-DO List
+Add old routine for getting case number from button ok
 Add edit functionality to currently engaged smart substitutions.
 DD18-142163 no line breaks in preferences
 Fix parsing of the clinical history in Shift-Enter
-Add ProcedureNote Flag   (requires adding functionality to setup)
-Add Add Clinical Info Flag	
-Move all functions to the menu
+
 
 Move All Data into the WebView
 Add DoNotUse Hotstring functionality could check on F8 also
@@ -84,7 +83,7 @@ If !DisableDermCoding
 	Gui, Add, Text, r1 w500 vDoctorLabel, Doctor: %ClientName%
 	Gui, Add, Text, r1 w500 vClientLabel, Client:  %ClientOfficeName%  --- %ClientState%
 	gui, add, text, x10 y+10 w800 h1 0x7  ;Horizontal Line > Black
-	html=<span id='main' style='white-space:pre-line'><span id='orderedProcedures'></span><span id='attnPathologist' style='color:red'></span><strong>Preferences:</strong><br><span id='preferences'></span><br><br><strong>Clinical Information:<br></strong><span id='clinicalInformation' style="color:blue"></span><br><br><strong>Final Diagnosis:<br></strong><span id='finalDiagnosis' style="color:green"></span><br><br><strong>Gross Description:<br></strong><span id='grossDescription'></span><br><br><strong>Prior Case Information<br></strong><span id='priorCaseInformation'></span></span>
+	html=<span id='main' style='white-space:pre-line'><span id='procedureNote' style='color:red'></span><span id='additionalClinicalInformation' style='color:red'></span><span id='orderedProcedures'></span><span id='attnPathologist' style='color:red'></span><strong>Preferences:</strong><br><span id='preferences'></span><br><br><strong>Clinical Information:<br></strong><span id='clinicalInformation' style="color:blue"></span><br><br><strong>Final Diagnosis:<br></strong><span id='finalDiagnosis' style="color:green"></span><br><br><strong>Gross Description:<br></strong><span id='grossDescription'></span><br><br><strong>Prior Case Information<br></strong><span id='priorCaseInformation'></span></span>
 
 	Gui, Add, ActiveX, w800 h590 vWB hwndATLWinHWND, Shell.Explorer
 	ComObjConnect(WB, new Event)
@@ -107,6 +106,8 @@ If !DisableDermCoding
 	Menu, FunctionsMenu, Add, Send email about this case (ctrl-alt-e), ^!e
 	Menu, FunctionsMenu, Add, Make new hotstring from highlighted text (Win-h), #h
 	Menu, FunctionsMenu, Add, Today's AutoAssign summary (ctrl-alt-w), ^!w
+	Menu, FunctionsMenu, Add, Make new Smart Substitution from highlighted text (ctrl-alt-m), ^!m
+	Menu, FunctionsMenu, Add, Make new Code Alert Flag from highlighted text (ctrl-alt-a), ^!a
 	
 	
 	Menu, HelpMenu, Add, Search Diagnosis Codes  (F7), F7
@@ -197,6 +198,17 @@ ButtonOK:  ;Automation
 	
 	foundCase := RegExMatch(CaseScanBox, "[A-Za-z][A-Za-z]\d\d-\d+", NewCaseNum)
 
+	if (!Instr(CaseScanBox, foundCase))
+	{
+		SoundBeep
+		SoundBeep
+		SoundBeep
+		SoundBeep
+		Msgbox, There is an error in the case number!
+		Msgbox,  Second error window in case extra returns close the first one!
+		return
+	}
+	
 	if (!foundCase OR !Instr(CaseScanBox, foundCase))  ;Second term will fail if the RegEx transposes digits
 		{
 			Msgbox, You did not enter a valid case number!
@@ -267,7 +279,7 @@ BuildMainGui:  ;Paper Replacer
 
 	x := get_filled_case_number(CurrentCodeRocketDisplayedCase)
 		
-		s := "select s.dx, s.gross, s.numberofspecimenparts, s.custom03, s.clin, p.name, s.clindata, pt.name, s.Computed_PATIENTAGE, p.proficiencylog, p.comment, s.custom04, s.patient, s.zfield, s.Computed_PatientDOB, s.computed_procabs, z.proficiencylog from specimen s, physician p, physician z, patient pt where s.patient = pt.id and s.clin=p.id and s.client=z.id and computed_numberfilled='" . x . "'"
+		s := "select s.dx, s.gross, s.numberofspecimenparts, s.custom03, s.clin, p.name, s.clindata, pt.name, s.Computed_PATIENTAGE, p.proficiencylog, p.comment, s.custom04, s.patient, s.zfield, s.Computed_PatientDOB, s.computed_procabs, z.proficiencylog, s.image14, s.image15 from specimen s, physician p, physician z, patient pt where s.patient = pt.id and s.clin=p.id and s.client=z.id and computed_numberfilled='" . x . "'"
 
 		WinSurgeQuery(s)
 
@@ -291,6 +303,8 @@ BuildMainGui:  ;Paper Replacer
 		PatientDOB := Result_15
 		orderedProcedures := Result_16
 		clientPreferences := Result_17
+		procedureNote := Result_18
+		additionalClinicalInformation := Result_19
 		
 		rawPreferences=%rawPreferences%`n%clientPreferences%
 		
@@ -372,38 +386,6 @@ BuildMainGui:  ;Paper Replacer
 			
 		ReDrawGui() ;Uses rawPreferences
 		
-/*  		;This section looks for "client" specific preferences and adds them to the preferences box if they exist
-		;s := "select p.proficiencylog from specimen s, physician p, patient pt where s.patient = pt.id and s.client=p.id and computed_numberfilled='" . x . "'"
-	WinSurgeQuery(s)
-	;Msgbox, %msg%
-	If msg
-		{ 	
-		If(rawPreferences<>"")
- 				FoundPos1 := InStr(msg, rawPreferences)
- 			else
- 				FoundPos1 := 0
- 			
- 			if(msg<>"")
- 				FoundPos2 := InStr(rawPreferences, msg)
- 			else
- 				FoundPos2 := 0
- 
- 			if(!(FoundPos1 OR FoundPos2))
- 				{
- 				rawPreferences=%rawPreferences%`n%msg%
- 				RedrawGui()
- 				}
- 			else if(FoundPos1>0 AND FoundPos2=0)
- 				{
- 				rawPreferences=%msg%
- 				RedrawGui()
- 				}
- 			}
- 	
- 
- */
-
-
 
 	;PRIOR CASE INFO - This sections searches for and formats the prior cases info
 	perc := "%%"
@@ -1840,7 +1822,7 @@ Sleep, 1000
 tempVar := 2
 table := all[tempVar]
 
-notDistributedCount := 0
+notDistributedCount := distributedCount := 0
 
 Loop, % table.rows.length - 1
 {	
@@ -1931,7 +1913,9 @@ Loop, % table.rows.length - 1
 
 ^!z::   ;Test Hotkey for debugging
 {
-	Msgbox, %A_AhkVersion%
+		Msgbox, % procedureNote 
+		Msgbox, % additionalClinicalInformation 
+
 return
 }
 
@@ -3603,6 +3587,16 @@ ReDrawGui()  ;Paper replacer
 		else
 			WB.document.getElementById("orderedProcedures").innerHTML := ""
 
+		if (Instr(procedureNote,"File"))
+			WB.document.getElementById("procedureNote").innerHTML := "****PROCEDURE NOTE AVAILABLE ON PATHOLOGIST TAB****"
+		else
+			WB.document.getElementById("procedureNote").innerHTML := ""
+		
+		if (Instr(additionalClinicalInformation, "File"))
+			WB.document.getElementById("additionalClinicalInformation").innerHTML := "****ADDITIONAL CLINICAL INFORMATION AVAILABLE ON PATHOLOGIST TAB****"
+		else
+			WB.document.getElementById("additionalClinicalInformation").innerHTML := ""
+			
 		WB.document.getElementById("preferences").innerHTML := displayedPreferences
 		WB.document.getElementById("clinicalInformation").innerHTML := displayedClinicalData
 		WB.document.getElementById("finalDiagnosis").innerHTML := displayedFinalDiagnosis
