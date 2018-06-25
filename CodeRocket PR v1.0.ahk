@@ -12,6 +12,7 @@ Move Smart Substitution Editing to a webpage for html formatting
 
 */
 /*  TO-DO List
+Improve Block Input
 Add old routine for getting case number from button ok
 Add edit functionality to currently engaged smart substitutions.
 DD18-142163 no line breaks in preferences
@@ -108,6 +109,7 @@ If !DisableDermCoding
 	Menu, FunctionsMenu, Add, Today's AutoAssign summary (ctrl-alt-w), ^!w
 	Menu, FunctionsMenu, Add, Make new Smart Substitution from highlighted text (ctrl-alt-m), ^!m
 	Menu, FunctionsMenu, Add, Make new Code Alert Flag from highlighted text (ctrl-alt-a), ^!a
+	Menu, FunctionsMenu, Add, List of all cases distributed today but not signed out (ctrl-alt-T), ^!t
 	
 	
 	Menu, HelpMenu, Add, Search Diagnosis Codes  (F7), F7
@@ -198,7 +200,7 @@ ButtonOK:  ;Automation
 	
 	foundCase := RegExMatch(CaseScanBox, "[A-Za-z][A-Za-z]\d\d-\d+", NewCaseNum)
 
-	if (!Instr(CaseScanBox, foundCase))
+	if (!Instr(CaseScanBox, NewCaseNum))
 	{
 		SoundBeep
 		SoundBeep
@@ -209,7 +211,7 @@ ButtonOK:  ;Automation
 		return
 	}
 	
-	if (!foundCase OR !Instr(CaseScanBox, foundCase))  ;Second term will fail if the RegEx transposes digits
+	if (!foundCase OR !Instr(CaseScanBox, NewCaseNum))  ;Second term will fail if the RegEx transposes digits
 		{
 			Msgbox, You did not enter a valid case number!
 			Gosub, F12
@@ -236,7 +238,7 @@ ButtonOK:  ;Automation
 	
 	CloseWinSURGEModalWindow("WinSURGE - Final Diagnosis:","","Close")
 
-	SetTimer, UnblockInput, 5000
+	;SetTimer, UnblockInput, 8000
 	Gosub, F12
 	BlockInput, On
 	OpenCase(NewCaseNum)
@@ -254,7 +256,7 @@ ButtonOK:  ;Automation
 	
 	SetTimer, WinSURGECaseDataUpdater, 2000
 	BlockInput, Off
-	SetTimer, UnblockInput, Off 	
+	;SetTimer, UnblockInput, Off 	
 
 	Return
 }
@@ -1085,10 +1087,13 @@ IfInstring, alertFlags, use-photos
 	
 	Gosub, BuildMainGui
 	
+	BlockInput, Off
 	QueueandAssign()
 	CloseandSaveCase()
 	DataEntered = 0
 	Gosub, F12
+	BlockInput, On
+	
 	Return
 }
 
@@ -1262,7 +1267,7 @@ printText=
 %ClientOfficeName% --- %ClientState%\par
 \fs22\par
 \b PREFERENCES\par
-\b0  %preferences%\par
+\b0  %displayedPreferences%\par
 \par
 \b CLINICAL INDICATIONS/HISTORY\par
 \b0 %ClinicalData%\par
@@ -1806,7 +1811,43 @@ checkForMelanoma:
 	return	
 }
 
-^!w::
+^!t::  ;List of all cases distributed today but not signed out
+{
+URLDownloadToFile, http://s-irv-autoasgn/autoassign2/report_path_case_status.php, distHtml.txt
+
+FileRead, html, distHTML.txt
+FileDelete, distHTML.txt
+
+
+document := ComObjCreate("HTMLfile")
+document.write(html)
+all := document.getElementsByTagName("table")
+
+Sleep, 1000
+tempVar := 2
+table := all[tempVar]
+
+unsignedCaseList := ""
+
+Loop, % table.rows.length - 1
+{	
+	tempVar := A_Index-1
+	tempVar2 := table.rows[tempVar].cells[0].innerHTML
+	;Msgbox, % table.rows[tempVar].cells[4].innerHTML
+	
+	
+	if (table.rows[tempVar].cells[1].innerHTML>0 AND table.rows[tempVar].cells[2].innerHTML<>"&nbsp;" AND table.rows[tempVar].cells[4].innerHTML="&nbsp;")
+		unsignedCaseList=%unsignedCaseList%%tempVar2%`n
+	
+}
+
+	Msgbox, Cases Distributed Today But Not Signed Out`n--------------------------------------------`n %unsignedCaseList%
+	
+	Return
+
+}
+
+^!w::  ;Distribution Summary
 {
 URLDownloadToFile, http://s-irv-autoasgn/autoassign2/report_path_case_status.php, distHtml.txt
 
@@ -1913,8 +1954,31 @@ Loop, % table.rows.length - 1
 
 ^!z::   ;Test Hotkey for debugging
 {
-		Msgbox, % procedureNote 
-		Msgbox, % additionalClinicalInformation 
+countVar := 0
+
+s := "select s.number, s.zaudittraillast, s.zlastlockeddate, s.zlastlockedtime from specimen s where s.sodate < '1950-01-01' and s.computed_tcatname='Skin' and s.number LIKE 'DD%'"
+ s := "select * from audittrail z where z.dbfile='SPECIMEN' and z.primarykeyvalue='DD18-149123'"
+ 
+ s := "Select a.id, a.audittraildetaillog from audittrail a where a.primarykeyvalue = 'DD18-154089' and dbfile=1 and changedate ='2018-06-25'" ; or changedate = '2018-06-23' or changedate = '2018-06-24' or changedate = '2018-06-25') and audittraildetaillog<>''"
+ 
+WinSurgeQuery(s)
+
+Msgbox, %msg%
+
+FileDelete, unsignedCases.txt
+
+FileAppend, %msg%, unsignedCases.txt
+
+FileRead, msg, unsignedCases.txt
+
+Loop, parse, msg, `n
+	{
+		if (!Instr(A_LoopField, "6/21/2018"))
+			Msgbox, %A_LoopField%
+		countVar += 1
+	}
+
+Msgbox, %countVar%
 
 return
 }
@@ -3587,13 +3651,13 @@ ReDrawGui()  ;Paper replacer
 		else
 			WB.document.getElementById("orderedProcedures").innerHTML := ""
 
-		if (Instr(procedureNote,"File"))
-			WB.document.getElementById("procedureNote").innerHTML := "****PROCEDURE NOTE AVAILABLE ON PATHOLOGIST TAB****"
+		if (Instr(procedureNote,"File") OR Instr(procedureNote,"Image"))
+			WB.document.getElementById("procedureNote").innerHTML := "****PROCEDURE NOTE AVAILABLE ON PATHOLOGIST TAB****<br>"
 		else
 			WB.document.getElementById("procedureNote").innerHTML := ""
 		
-		if (Instr(additionalClinicalInformation, "File"))
-			WB.document.getElementById("additionalClinicalInformation").innerHTML := "****ADDITIONAL CLINICAL INFORMATION AVAILABLE ON PATHOLOGIST TAB****"
+		if (Instr(additionalClinicalInformation, "File") OR Instr(additionalClinicalInformation, "Image"))
+			WB.document.getElementById("additionalClinicalInformation").innerHTML := "****ADDITIONAL CLINICAL INFORMATION AVAILABLE ON PATHOLOGIST TAB****<br>"
 		else
 			WB.document.getElementById("additionalClinicalInformation").innerHTML := ""
 			
