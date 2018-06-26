@@ -1954,6 +1954,39 @@ Loop, % table.rows.length - 1
 
 ^!z::   ;Test Hotkey for debugging
 {
+/* URLDownloadToFile, http://s-irv-autoasgn/autoassign2/report_path_case_status.php?order_by=sodate&date=2018-06-18, sodate.txt
+
+FileRead, html, sodate.txt
+FileDelete, sodate.txt
+
+
+document := ComObjCreate("HTMLfile")
+document.write(html)
+all := document.getElementsByTagName("table")
+
+Sleep, 1000
+tempVar := 2
+table := all[tempVar]
+
+unsignedCaseList := ""
+
+Loop, % table.rows.length - 1
+{	
+	tempVar := A_Index-1
+	tempVar2 := table.rows[tempVar].cells[0].innerHTML
+	;Msgbox, % table.rows[tempVar].cells[4].innerHTML
+	
+	
+	if (table.rows[tempVar].cells[1].innerHTML>0 AND table.rows[tempVar].cells[2].innerHTML<>"&nbsp;" AND table.rows[tempVar].cells[4].innerHTML="&nbsp;")
+		unsignedCaseList=%unsignedCaseList%%tempVar2%`n
+	
+}
+
+	Msgbox, Cases Distributed Today But Not Signed Out`n--------------------------------------------`n %unsignedCaseList%
+	
+	Return
+
+
 countVar := 0
 
 s := "select s.number, s.zaudittraillast, s.zlastlockeddate, s.zlastlockedtime from specimen s where s.sodate < '1950-01-01' and s.computed_tcatname='Skin' and s.number LIKE 'DD%'"
@@ -1978,8 +2011,13 @@ Loop, parse, msg, `n
 		countVar += 1
 	}
 
-Msgbox, %countVar%
+Msgbox, %countVar% 
+*/
+finaldxcontents=
 
+Msgbox, %finaldxcontents%
+
+foundPos := RegExMatch(finaldxcontents,"(?m)(\w)\.[^\r]*%%P%%\r[^\r]*\#\#",jar)
 return
 }
 
@@ -2128,18 +2166,52 @@ Shift & Enter::
 			return
 		}
 		;DetermineWhichJar
-		foundPos := RegExMatch(finaldxcontents,"(?m)(\w)\.[^\r]*%%P%%\r[^\r]*\#\#",jar)   ;jar1 will contain the letter of the jar for the entered code
+		;foundPos := RegExMatch(finaldxcontents,"(?m)(\w)\.[^\r]*%%P%%\r[^\r]*\#\#",jar)   ;jar1 will contain the letter of the jar for the entered code
+		StringReplace, tempVar, finaldxcontents, ##, ¥, All
+		StringSplit, jar, tempVar, ¥
+		tempVar2:="%%P%%"
+		StringReplace, tempVar, jar1, %tempVar2%, ¥, All
+		;Msgbox, %tempVar%
+		StringSplit, jar, tempVar, ¥
+		tempVar := jar0-1
+		tempVar2 := jar%tempVar%
+		StringSplit, jar, tempVar2, `n
+		tempVar := jar%jar0%
+		StringLeft, thisJar, tempVar, 1
+		
+		;Msgbox, thisJar is %thisJar%
+		
+		;Msgbox, jar0=%jar0%`njar1=%jar1%`n`njar2=%jar2%
+		
+		
 		;Get the Clinical History for that Jar
-		nextJar := Chr(Asc(%jar1%) + 1 + 65)
+		nextJar := Chr(Asc(thisJar) + 1)
 
-		needleRegex=%jar1%\.([\w\s\W\n\r]+)<br>%nextJar%\.
-
-		foundPos := RegExMatch(ClinicalData, needleRegex, thisJarClinicalData)  ;This jars clinical data will be contained in thisJarClinicalData1
+		;Msgbox, thisJar=%thisJar%`nnextJar='%nextJar%'
 		
-		If !thisJarClinicalData1
-			thisJarClinicalData1 := ClinicalData
 		
-		;Msgbox, %ClinicalData%`n%thisJarClinicalData1%
+		
+		tempVar=<br>%nextJar%.
+		;Msgbox, searchString = '%tempVar%'
+		StringReplace, tempVar2, ClinicalData, %tempVar%, ¥, All
+		;Msgbox, tempVar2=%tempVar2%
+		StringSplit, clinDataSplit, tempVar2, ¥
+		;Msgbox, clinDataSplit1=%clinDataSplit1%
+		
+		If (thisJar="A")
+			tempVar=A.%A_Space%
+		else
+			tempVar=<br>%thisJar%.%A_Space%
+		
+		StringCaseSense, On
+		StringReplace, tempVar2, clinDataSplit1, %tempVar%, ¥, All
+		StringCaseSense, Off
+		
+		;Msgbox, %tempVar2%
+		StringSplit, clinDataSplits, tempVar2, ¥
+		thisJarClinicalData1:=clinDataSplits%clinDataSplits0%
+		
+		;Msgbox, %thisJarClinicalData1%
 		
 			TempMicros = 0	
 			SuppressMicros = 0	
