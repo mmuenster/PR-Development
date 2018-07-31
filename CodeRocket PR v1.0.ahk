@@ -990,7 +990,11 @@ F8::           ;Automation
 ;CPT Code Checking Block
 	{
 		finaldiag := WinSURGEFinalDiagnosisContents()
-		
+
+		ErrorLevel := MildDysplasticWarningCheck()
+			If ErrorLevel
+					return
+
 		lowerCaseProblem := RegExMatch(finaldiag, "%%P%%\r\n[a-z]")
 		if lowerCaseProblem>0
 			{
@@ -1267,7 +1271,7 @@ printText=
 %ClientOfficeName% --- %ClientState%\par
 \fs22\par
 \b PREFERENCES\par
-\b0  %displayedPreferences%\par
+\b0  %rawPreferences%\par
 \par
 \b CLINICAL INDICATIONS/HISTORY\par
 \b0 %ClinicalData%\par
@@ -1854,11 +1858,12 @@ URLDownloadToFile, http://s-irv-autoasgn/autoassign2/report_path_case_status.php
 FileRead, html, distHTML.txt
 FileDelete, distHTML.txt
 
+;  Login info  Username=mmuenster  Password=mmuenster@2015
 
 document := ComObjCreate("HTMLfile")
 document.write(html)
 all := document.getElementsByTagName("table")
-
+	
 Sleep, 1000
 tempVar := 2
 table := all[tempVar]
@@ -1888,7 +1893,7 @@ Loop, % table.rows.length - 1
 	
 	InputBox, clientID, ,Enter the Client ID you want to search...,
 	
-	s := "select s.number, p.name, s.numberofspecimenparts from specimen s, physician p where s.custom04='" . clientID . "' and s.path=p.id and s.sodate>'2017-11-01'"
+	s := "select s.number, p.name, s.numberofspecimenparts from specimen s, physician p where s.custom04='" . clientID . "' and s.path=p.id and s.sodate>'2018-02-01'"
 	;. ", physician p, patient pt where s.patient = pt.id and s.clin=p.id and computed_numberfilled='" . x . "'"
 	WinSurgeQuery(s)
 	;Msgbox, %msg%
@@ -2013,11 +2018,16 @@ Loop, parse, msg, `n
 
 Msgbox, %countVar% 
 */
-finaldxcontents=
 
-Msgbox, %finaldxcontents%
 
-foundPos := RegExMatch(finaldxcontents,"(?m)(\w)\.[^\r]*%%P%%\r[^\r]*\#\#",jar)
+s:= "select s.number, s.dx from specimen s, physician p where s.clin=p.id and s.dx LIKE '%dfsp%'  and s.sodate > '2018-05-01'"
+;s:= "select s.number, s.dx, s.sodate from specimen s where s.dx LIKE '%alopecia%' and s.sodate > '2018-01-01'"
+;s=select * from specimen where computed_numberfilled='DD18-173265'
+
+WinSurgeQuery(s)
+Msgbox, %msg%
+;FileAppend, %msg%, AlopeciaQuery.txt
+
 return
 }
 
@@ -2070,7 +2080,35 @@ return
 }
 
 ^!2::Msgbox, %alertFlags%
-	
+
+F6::
+{
+if(A_Username<>"mmuenster")
+	return
+
+	Process,Close,WinSURGE.exe
+	Process,WaitClose,WinSURGE.exe,2
+	If(!ErrorLevel)
+	{
+		Run, "C:\Program Files (x86)\WinSURGE\WinSURGE.exe"
+		WinWaitActive, WinSURGE
+		tempVar := "Summ%r2018"
+		Send, %tempVar%
+		Send, {Enter}
+		WinWaitActive, Login Message
+		Send, {Enter}
+		
+		WinWaitActive, WinSURGE, Pathologist-CR
+		Click, 760, 100
+	}
+	else
+	{
+		Msgbox, Could not close WinSurge
+	}
+
+	return
+}
+
 #h::  ; Win+H hotkey used to add hotstrings to the personal extended phrases 
 {
 ; Get the text currently selected. The clipboard is used instead of
@@ -3533,15 +3571,22 @@ Return
 MildDysplasticWarningCheck()
 {
 global
+tempWarning := 0
+
 	If (ClientID="CT5995D" OR ClientID="RI7604D" OR ClientID="RI10484D" OR ClientID="RI10659D")
 					{
 						comma =,
 						IfInString, mildCodes, %comma%%basediag%%comma%
+							tempWarning := 1
+						IfInString, finaldiag, mild
+							tempWarning := 1
+						
+						if (tempWarning)
 							{
 								SoundBeep
 								SoundBeep
 								SoundBeep
-								Msgbox, 4,, This client has requested never to receive a melanocytic lesion with mild atypia and you used one.  Are you sure you want to continue with this code?
+								Msgbox, 4,, This client has requested never to receive a melanocytic lesion with mild atypia and you used one.  Are you sure you want to continue?
 								IfMsgbox, No
 									Return 1
 							}

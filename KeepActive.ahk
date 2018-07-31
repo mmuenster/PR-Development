@@ -22,29 +22,6 @@ KeepActive:
    return
 }
 
-F6::
-{
-Process,Close,WinSURGE.exe
-Process,WaitClose,WinSURGE.exe,2
-If(!ErrorLevel)
-{
-	Run, "C:\Program Files (x86)\WinSURGE\WinSURGE.exe"
-	WinWaitActive, WinSURGE
-	Send, Spr{!}ng2018
-	Send, {Enter}
-	WinWaitActive, Login Message
-	Send, {Enter}
-	
-	WinWaitActive, WinSURGE, Pathologist-CR
-	Click, 760, 100
-}
-else
-{
-	Msgbox, Could not close WinSurge
-}
-return
-}
-
 ^!j::
 {
 	totalJarCount := 0
@@ -97,8 +74,8 @@ return
 		daysJarCount := jarcount + mxcount*2
 		if(dow="Saturday" OR dow="Sunday")
 			totalJarCount := totalJarCount + daysJarCount
-		else if (daysJarCount>142)
-			totalJarCount := totalJarCount + daysJarCount - 142
+		else if (daysJarCount>160)
+			totalJarCount := totalJarCount + daysJarCount - 160
 		
 		appendText := todaydate . "," . dow . "," . daysJarCount . "," . totalJarCount . "," . totalSlideCount . "`n"
 	
