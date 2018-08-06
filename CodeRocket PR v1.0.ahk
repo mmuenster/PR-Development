@@ -868,6 +868,114 @@ return
 	return
 }
 
+;Melanoma case check		;Automation
+checkForMelanoma:
+{
+	SplashTextOn, 100, 100, Melanoma Call Checker, Initializing...
+
+	StringLeft, y, A_UserName, 5
+	StringUpper, y, y
+	
+	s = Select p.name, p.id, p.state, p.suid, p.wsid from pathologists p where p.abbr='%y%'
+	CodeDataBaseQuery(s)
+	pathWinSurgeId := Result_5
+	
+
+		
+		searchdate = %a_now%
+		searchdate += -5, days
+		FormatTime, searchdate, %searchdate%, yyyy-MM-dd
+		
+/* 		lasttime = 12:00:00 AM
+ * 
+ * 		finishTime := A_Now - 1500
+ * 		FormatTime, endtime, %finishTime%, h:mm:ss tt
+ * 		StringSplit, j, endtime, %A_Space%:
+ */
+
+	s := "select s.number, s.sotime, s.text01, s.sodate, s.dx from specimen s where s.path =" . pathWinSurgeId . " and s.dx LIKE '%MELANOMA%' and s.sodate >= '" . searchdate . "'" ;and s.sotime >= '" . lasttime . "' and s.sotime <= '" . endtime . "'"
+
+	SplashTextOn, 100, 100, Melanoma Call Checker, Searching for Melanomas...
+
+	WinSurgeQuery(s)
+	If A_LastError
+		{
+			Msgbox, There was an error accessing the WinSURGE Database to check your Melanoma cases.`n`ns=%s%`n  A_LastError = %A_LastError%`n
+			Return
+		}	
+		
+	SplashTextOn, 100, 100, Melanoma Call Checker, Filtering for Client Service Calls...
+
+	caselist := ""
+	Loop, parse, msg, ¥ 
+	{
+	if (A_Index = 1)
+		Continue
+	Else
+		{
+		x := InStr(A_LoopField,"%%mbn%%")
+		x := x + Instr(A_LoopField, "%%mis%%")
+		x := x + Instr(A_LoopField, "%%misl%%")
+		x := x + Instr(A_LoopField, "%%miss%%")
+		x := x + Instr(A_LoopField, "%%mm%%")
+		x := x + Instr(A_LoopField, "%%mmm%%")
+		x := x + Instr(A_LoopField, "%%mis1%%")
+		x := x + Instr(A_LoopField, "%%mmaz%%")
+		x := x + Instr(A_LoopField, "%%misaz%%")
+		x := x + Instr(A_LoopField, "%%lmaz%%")
+		x := x + Instr(A_LoopField, "%%aimm1%%")
+		x := x + Instr(A_LoopField, "%%aimm2%%")
+		x := x + Instr(A_LoopField, "%%asnmm%%")
+		x := x + Instr(A_LoopField, "%%pmis%%")
+		x := x + Instr(A_LoopField, "%%nmis%%")
+		x := x + Instr(A_LoopField, "%%nmm%%")
+		x := x + Instr(A_LoopField, "%%omm%%")
+		x := x + Instr(A_LoopField, "%%omis%%")
+		x := x + Instr(A_LoopField, "%%pamis%%")
+		x := x + Instr(A_LoopField, "%%cmm%%")
+		x := x + Instr(A_LoopField, "%%misdn%%")
+		x := x + Instr(A_LoopField, "%%mmbap%%")
+		x := x + Instr(A_LoopField, "%%mmpn%%")
+		x := x + Instr(A_LoopField, "%%idmm%%")
+
+		if x>0
+			{
+				isFaxed := Instr(intcomment, "fax")
+				isFaxed := isFaxed + Instr(intcomment, "notified")
+				isFaxed := isFaxed + Instr(intcomment, "called")
+				isFaxed := isFaxed + Instr(intcomment, "discussed")
+				
+				if (isFaxed<=0)
+					caselist = %caselist%[ %casenumber% ];  %sodate%`n`nInternal Comments:`n%intcomment%`n`n
+			}
+		casenumber := sotime
+		sotime := intcomment
+		intcomment := sodate
+		sodate := A_LoopField
+	}
+
+	}
+
+	if(caselist)
+	{
+		SplashTextOff
+		SoundBeep
+		Msgbox, MELANOMA CALL CHECKER`nIt appears you have one or more cases that was/were melanoma but for which client services has not "fax"ed, "called", or "notified" the client.`nPlease check the below information and take appropriate action!`n`n%caselist%
+	}
+	else
+	{
+		SplashTextOn, 100, 100, Melanoma Call Checker, All Cases Notified
+		Sleep, 500
+	}
+		
+
+	caselist := ""
+	
+	SplashTextOff
+
+	return
+}
+			
 F7::            ;Coding
 {	
 	counter := 0
@@ -1261,6 +1369,17 @@ return
 	return
 }
 
+^!u::  ;Undo current case and set for next scan
+{
+	WinActivate, WinSURGE
+	Send, !3
+	WinWaitActive, WinSURGE, Cancel
+	Send {Left}{Enter}
+	Sleep, 1500
+	Gosub, F12
+	return
+}
+	
 ^!p::	;Paper Replacer
 {
 printText=
@@ -1522,114 +1641,6 @@ Return
 return
 }
 
-^!u::	;Melanoma case check		;Automation
-{
-checkForMelanoma:
-	SplashTextOn, 100, 100, Melanoma Call Checker, Initializing...
-
-	StringLeft, y, A_UserName, 5
-	StringUpper, y, y
-	
-	s = Select p.name, p.id, p.state, p.suid, p.wsid from pathologists p where p.abbr='%y%'
-	CodeDataBaseQuery(s)
-	pathWinSurgeId := Result_5
-	
-
-		
-		searchdate = %a_now%
-		searchdate += -5, days
-		FormatTime, searchdate, %searchdate%, yyyy-MM-dd
-		
-/* 		lasttime = 12:00:00 AM
- * 
- * 		finishTime := A_Now - 1500
- * 		FormatTime, endtime, %finishTime%, h:mm:ss tt
- * 		StringSplit, j, endtime, %A_Space%:
- */
-
-	s := "select s.number, s.sotime, s.text01, s.sodate, s.dx from specimen s where s.path =" . pathWinSurgeId . " and s.dx LIKE '%MELANOMA%' and s.sodate >= '" . searchdate . "'" ;and s.sotime >= '" . lasttime . "' and s.sotime <= '" . endtime . "'"
-
-	SplashTextOn, 100, 100, Melanoma Call Checker, Searching for Melanomas...
-
-	WinSurgeQuery(s)
-	If A_LastError
-		{
-			Msgbox, There was an error accessing the WinSURGE Database to check your Melanoma cases.`n`ns=%s%`n  A_LastError = %A_LastError%`n
-			Return
-		}	
-		
-	SplashTextOn, 100, 100, Melanoma Call Checker, Filtering for Client Service Calls...
-
-	caselist := ""
-	Loop, parse, msg, ¥ 
-	{
-	if (A_Index = 1)
-		Continue
-	Else
-		{
-		x := InStr(A_LoopField,"%%mbn%%")
-		x := x + Instr(A_LoopField, "%%mis%%")
-		x := x + Instr(A_LoopField, "%%misl%%")
-		x := x + Instr(A_LoopField, "%%miss%%")
-		x := x + Instr(A_LoopField, "%%mm%%")
-		x := x + Instr(A_LoopField, "%%mmm%%")
-		x := x + Instr(A_LoopField, "%%mis1%%")
-		x := x + Instr(A_LoopField, "%%mmaz%%")
-		x := x + Instr(A_LoopField, "%%misaz%%")
-		x := x + Instr(A_LoopField, "%%lmaz%%")
-		x := x + Instr(A_LoopField, "%%aimm1%%")
-		x := x + Instr(A_LoopField, "%%aimm2%%")
-		x := x + Instr(A_LoopField, "%%asnmm%%")
-		x := x + Instr(A_LoopField, "%%pmis%%")
-		x := x + Instr(A_LoopField, "%%nmis%%")
-		x := x + Instr(A_LoopField, "%%nmm%%")
-		x := x + Instr(A_LoopField, "%%omm%%")
-		x := x + Instr(A_LoopField, "%%omis%%")
-		x := x + Instr(A_LoopField, "%%pamis%%")
-		x := x + Instr(A_LoopField, "%%cmm%%")
-		x := x + Instr(A_LoopField, "%%misdn%%")
-		x := x + Instr(A_LoopField, "%%mmbap%%")
-		x := x + Instr(A_LoopField, "%%mmpn%%")
-		x := x + Instr(A_LoopField, "%%idmm%%")
-
-		if x>0
-			{
-				isFaxed := Instr(intcomment, "fax")
-				isFaxed := isFaxed + Instr(intcomment, "notified")
-				isFaxed := isFaxed + Instr(intcomment, "called")
-				isFaxed := isFaxed + Instr(intcomment, "discussed")
-				
-				if (isFaxed<=0)
-					caselist = %caselist%[ %casenumber% ];  %sodate%`n`nInternal Comments:`n%intcomment%`n`n
-			}
-		casenumber := sotime
-		sotime := intcomment
-		intcomment := sodate
-		sodate := A_LoopField
-	}
-
-	}
-
-	if(caselist)
-	{
-		SplashTextOff
-		SoundBeep
-		Msgbox, MELANOMA CALL CHECKER`nIt appears you have one or more cases that was/were melanoma but for which client services has not "fax"ed, "called", or "notified" the client.`nPlease check the below information and take appropriate action!`n`n%caselist%
-	}
-	else
-	{
-		SplashTextOn, 100, 100, Melanoma Call Checker, All Cases Notified
-		Sleep, 500
-	}
-		
-
-	caselist := ""
-	
-	SplashTextOff
-
-	return
-}
-			
 ^!x::	;Automation
 {
 
