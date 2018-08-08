@@ -2188,6 +2188,7 @@ Shift & Enter::
 		Send, {#}{#}
 		Sleep, 200
 		ControlGetText, finaldxcontents, TX202, WinSURGE - 	
+		finaldiag := finaldxcontents  ;this makes it so that the MildDysplasticWarningCheck routine is looking at the most recent contents of finaldx
 		Send, {Backspace}{Backspace}
 		
 		;rawCode0 holds the entire match, rawCode2 holds the front helpers, 3 holds the DX code, 5 holds the margins, 7 holds the comment helpers, 8 holds the "?/" modifiers
