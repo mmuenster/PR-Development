@@ -310,6 +310,15 @@ BuildMainGui:  ;Paper Replacer
 		
 		rawPreferences=%rawPreferences%`n%clientPreferences%
 		
+		IfInString, rawPreferences, ICD10
+			{
+				SoundBeep
+				SoundBeep
+				SoundBeep
+				SoundBeep
+				Msgbox, ICD10's are required!
+			}
+		
 		;Mandatory Replacements for basic formatting start here
 		attnPathologistField := RegExReplace(attnPathologistField, "[a-z]+ \d+\/\d+\/\d+ \d+:\d+ \w+", "")
 		StringReplace, attnPathologistField, attnPathologistField, `r,,All
@@ -1291,8 +1300,8 @@ F11::			;Automation
 F12::			;Automation			
 {
 	WinActivate, WinSURGE , 	
-	SetTitleMatchMode, 2
-	WinActivate, CodeRocket, , SciTE4AutoHotkey
+	SetTitleMatchMode, 1
+	WinActivate, CodeRocket PR v1.0.ahk
 	SetTitleMatchMode, 1
 	GuiControl, Text, CaseScanBox,  ;Blanks the data entry textbox 	
 	GuiControl, Focus, CaseScanBox,
@@ -1641,8 +1650,14 @@ Return
 return
 }
 
-^!x::	;Automation
+^!x::	;Cases for a specific client
 {
+
+			s := "select s.number, s.numberofspecimenparts, s.dx from specimen s where s.custom04 ='MI6970D' and s.sodate >= '2018-11-01'"
+		WinSurgeQuery(s)
+		Msgbox, %msg%
+		FileAppend, %msg%, C:\Users\mmuenster\Desktop\LegacyClient.txt
+		return
 
 }
 
@@ -1904,10 +1919,11 @@ Loop, % table.rows.length - 1
 	
 	InputBox, clientID, ,Enter the Client ID you want to search...,
 	
-	s := "select s.number, p.name, s.numberofspecimenparts from specimen s, physician p where s.custom04='" . clientID . "' and s.path=p.id and s.sodate>'2018-02-01'"
+	s := "select s.number, p.name, s.numberofspecimenparts, s.sodate from specimen s, physician p where s.custom04='" . clientID . "' and s.path=p.id and s.sodate>='2018-08-01' and s.sodate<='2018-12-10'"
 	;. ", physician p, patient pt where s.patient = pt.id and s.clin=p.id and computed_numberfilled='" . x . "'"
 	WinSurgeQuery(s)
-	;Msgbox, %msg%
+	FileAppend, %msg%, %clientID%.txt
+
 	
 	Loop, Parse, msg, `n
 		{
@@ -1970,74 +1986,17 @@ Loop, % table.rows.length - 1
 
 ^!z::   ;Test Hotkey for debugging
 {
-/* URLDownloadToFile, http://s-irv-autoasgn/autoassign2/report_path_case_status.php?order_by=sodate&date=2018-06-18, sodate.txt
+s := "select s.number, s.custom04, p.proficiencylog, z.proficiencylog from specimen s, physician p, physician z, patient pt where s.patient = pt.id and s.clin=p.id and s.client=z.id and s.sodate>'2019-01-18'"
 
-FileRead, html, sodate.txt
-FileDelete, sodate.txt
+		WinSurgeQuery(s)
 
-
-document := ComObjCreate("HTMLfile")
-document.write(html)
-all := document.getElementsByTagName("table")
-
-Sleep, 1000
-tempVar := 2
-table := all[tempVar]
-
-unsignedCaseList := ""
-
-Loop, % table.rows.length - 1
-{	
-	tempVar := A_Index-1
-	tempVar2 := table.rows[tempVar].cells[0].innerHTML
-	;Msgbox, % table.rows[tempVar].cells[4].innerHTML
-	
-	
-	if (table.rows[tempVar].cells[1].innerHTML>0 AND table.rows[tempVar].cells[2].innerHTML<>"&nbsp;" AND table.rows[tempVar].cells[4].innerHTML="&nbsp;")
-		unsignedCaseList=%unsignedCaseList%%tempVar2%`n
-	
-}
-
-	Msgbox, Cases Distributed Today But Not Signed Out`n--------------------------------------------`n %unsignedCaseList%
-	
-	Return
-
-
-countVar := 0
-
-s := "select s.number, s.zaudittraillast, s.zlastlockeddate, s.zlastlockedtime from specimen s where s.sodate < '1950-01-01' and s.computed_tcatname='Skin' and s.number LIKE 'DD%'"
- s := "select * from audittrail z where z.dbfile='SPECIMEN' and z.primarykeyvalue='DD18-149123'"
- 
- s := "Select a.id, a.audittraildetaillog from audittrail a where a.primarykeyvalue = 'DD18-154089' and dbfile=1 and changedate ='2018-06-25'" ; or changedate = '2018-06-23' or changedate = '2018-06-24' or changedate = '2018-06-25') and audittraildetaillog<>''"
- 
-WinSurgeQuery(s)
-
-Msgbox, %msg%
-
-FileDelete, unsignedCases.txt
-
-FileAppend, %msg%, unsignedCases.txt
-
-FileRead, msg, unsignedCases.txt
-
-Loop, parse, msg, `n
-	{
-		if (!Instr(A_LoopField, "6/21/2018"))
-			Msgbox, %A_LoopField%
-		countVar += 1
-	}
-
-Msgbox, %countVar% 
-*/
-
-
-s:= "select s.number, s.dx from specimen s, physician p where s.clin=p.id and s.dx LIKE '%dfsp%'  and s.sodate > '2018-05-01'"
+;s:= "select s.number, s.dx from specimen s, physician p where s.clin=p.id and s.dx LIKE '%dfsp%'  and s.sodate > '2018-05-01'"
 ;s:= "select s.number, s.dx, s.sodate from specimen s where s.dx LIKE '%alopecia%' and s.sodate > '2018-01-01'"
 ;s=select * from specimen where computed_numberfilled='DD18-173265'
 
-WinSurgeQuery(s)
+;WinSurgeQuery(s)
 Msgbox, %msg%
-;FileAppend, %msg%, AlopeciaQuery.txt
+FileAppend, %msg%, preferencelog.txt
 
 return
 }
@@ -2092,10 +2051,30 @@ return
 
 ^!2::Msgbox, %alertFlags%
 
+^!3::SoundSet, 0, Wave
+
+F1::
+{
+	WinMinimize, CodeRocket PR v1.0.ahk
+	WinMaximize, Caris CodeRocket v2.5a.exe
+	WinActivate, Caris CodeRocket v2.5a.exe
+	return
+}
+
++F1::
+{
+	WinMinimize, Caris CodeRocket v2.5a.exe
+	WinActivate, CodeRocket PR v1.0.ahk
+	Gosub, F12
+	return
+}
+
 F6::
 {
 if(A_Username<>"mmuenster")
 	return
+
+	Run, "C:\Users\mmuenster\Desktop\PR Development\KeepActive.ahk"
 
 	Process,Close,WinSURGE.exe
 	Process,WaitClose,WinSURGE.exe,2
@@ -2103,13 +2082,13 @@ if(A_Username<>"mmuenster")
 	{
 		Run, "C:\Program Files (x86)\WinSURGE\WinSURGE.exe"
 		WinWaitActive, WinSURGE
-		tempVar := "Summ%r2018"
+		tempVar := "F@ll2018"
 		Send, %tempVar%
 		Send, {Enter}
 		WinWaitActive, Login Message
 		Send, {Enter}
 		
-		WinWaitActive, WinSURGE, Pathologist-CR
+		WinWaitActive, WinSURGE
 		Click, 760, 100
 	}
 	else
