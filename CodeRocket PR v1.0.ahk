@@ -310,6 +310,14 @@ BuildMainGui:  ;Paper Replacer
 		
 		rawPreferences=%rawPreferences%`n%clientPreferences%
 		
+		
+		if (ClientWinSurgeID)
+		{
+		s = Select top 1 c.name,c.photo_pref,c.micro_pref,c.margin_pref, c.icd9_pref, c.log from clinipref c where c.WinSurge_id=%ClientWinSurgeId%
+	CodeDatabaseQuery(s)
+
+		}
+	
 		IfInString, rawPreferences, ICD10
 			{
 				SoundBeep
@@ -318,6 +326,7 @@ BuildMainGui:  ;Paper Replacer
 				SoundBeep
 				Msgbox, ICD10's are required!
 			}
+			
 		
 		;Mandatory Replacements for basic formatting start here
 		attnPathologistField := RegExReplace(attnPathologistField, "[a-z]+ \d+\/\d+\/\d+ \d+:\d+ \w+", "")
@@ -1297,19 +1306,20 @@ F11::			;Automation
 	Return
 }
 
-F12::			;Automation			
+ F12::			;Automation			
 {
-	WinActivate, WinSURGE , 	
-	SetTitleMatchMode, 1
-	WinActivate, CodeRocket PR v1.0.ahk
-	SetTitleMatchMode, 1
-	GuiControl, Text, CaseScanBox,  ;Blanks the data entry textbox 	
-	GuiControl, Focus, CaseScanBox,
+	;WinActivate, WinSURGE , 	
+	;SetTitleMatchMode, 1
+	;WinActivate, CodeRocket PR v1.0.ahk
+	;SetTitleMatchMode, 1
+	;GuiControl, Text, CaseScanBox,  ;Blanks the data entry textbox 	
+	;GuiControl, Focus, CaseScanBox,
 	
 return
 }
 
-^!f::  ;Smart Flag Replacer
+
+^!f::  			;Smart Flag Replacer
 {
 	tempStringtoFlag := clipboard
 	StringReplace, tempStringtoFlag, tempStringtoFlag,`n,,All
@@ -1653,7 +1663,7 @@ return
 ^!x::	;Cases for a specific client
 {
 
-			s := "select s.number, s.numberofspecimenparts, s.dx from specimen s where s.custom04 ='MI6970D' and s.sodate >= '2018-11-01'"
+		s := "select s.number, s.numberofspecimenparts, s.dx from specimen s where s.custom04 ='OH7641D' and s.path =220720 and s.sodate > '2019-02-01'"
 		WinSurgeQuery(s)
 		Msgbox, %msg%
 		FileAppend, %msg%, C:\Users\mmuenster\Desktop\LegacyClient.txt
@@ -1919,7 +1929,7 @@ Loop, % table.rows.length - 1
 	
 	InputBox, clientID, ,Enter the Client ID you want to search...,
 	
-	s := "select s.number, p.name, s.numberofspecimenparts, s.sodate from specimen s, physician p where s.custom04='" . clientID . "' and s.path=p.id and s.sodate>='2018-08-01' and s.sodate<='2018-12-10'"
+	s := "select s.number, p.name, s.numberofspecimenparts, s.sodate from specimen s, physician p where s.custom04='" . clientID . "' and s.path=p.id and s.sodate>='2018-08-01' and s.sodate<='2019-03-01'"
 	;. ", physician p, patient pt where s.patient = pt.id and s.clin=p.id and computed_numberfilled='" . x . "'"
 	WinSurgeQuery(s)
 	FileAppend, %msg%, %clientID%.txt
@@ -1986,7 +1996,7 @@ Loop, % table.rows.length - 1
 
 ^!z::   ;Test Hotkey for debugging
 {
-s := "select s.number, s.custom04, p.proficiencylog, z.proficiencylog from specimen s, physician p, physician z, patient pt where s.patient = pt.id and s.clin=p.id and s.client=z.id and s.sodate>'2019-01-18'"
+s := "select s.number, s.dx from specimen s where s.dx LIKE '%PURPURIC DERMATOSIS%' and s.sodate>'2019-02-01'"
 
 		WinSurgeQuery(s)
 
@@ -1996,7 +2006,7 @@ s := "select s.number, s.custom04, p.proficiencylog, z.proficiencylog from speci
 
 ;WinSurgeQuery(s)
 Msgbox, %msg%
-FileAppend, %msg%, preferencelog.txt
+FileAppend, %msg%, purpuricDermatosis.txt
 
 return
 }
@@ -2074,7 +2084,7 @@ F6::
 if(A_Username<>"mmuenster")
 	return
 
-	Run, "C:\Users\mmuenster\Desktop\PR Development\KeepActive.ahk"
+	;Run, "C:\Users\mmuenster\Desktop\PR Development\KeepActive.ahk"
 
 	Process,Close,WinSURGE.exe
 	Process,WaitClose,WinSURGE.exe,2
@@ -2082,7 +2092,7 @@ if(A_Username<>"mmuenster")
 	{
 		Run, "C:\Program Files (x86)\WinSURGE\WinSURGE.exe"
 		WinWaitActive, WinSURGE
-		tempVar := "F@ll2018"
+		tempVar := "W{!}nter2019"
 		Send, %tempVar%
 		Send, {Enter}
 		WinWaitActive, Login Message

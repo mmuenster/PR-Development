@@ -1,6 +1,6 @@
 html     := ""
 URL      := "https://dazzling-torch-3393.firebaseio.com/test.json"
-POSTData := "46"
+POSTData := "99"
 
 j := URLPost(URL, PostData)
 
